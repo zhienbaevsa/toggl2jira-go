@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	event "github.com/gookit/event"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/gateway/jira"
 	"github.com/zhienbaevsa/toggle2jira-go/pkg/model"
 )
@@ -27,6 +28,8 @@ type JiraConfig struct {
 var issuesWorklogsMap map[string]bool
 
 var loc *time.Location
+
+const WorklogUploadedEvent = "worklog.uploaded"
 
 const timeFormat = "2006-01-02T15:04:05"
 
@@ -65,6 +68,7 @@ func (u *WorklogUploader) Start(from, to time.Time) error {
 		if err != nil {
 			return err
 		}
+		event.MustFire(WorklogUploadedEvent, nil)
 	}
 	return nil
 }
@@ -86,17 +90,22 @@ func (u *WorklogUploader) loadIssuesWorklogsMap(ids []string) error {
 	return nil
 }
 
-func (s *WorklogUploader) UploadOne(w model.Worklog) error {
+func (u *WorklogUploader) UploadOne(w model.Worklog) error {
 	k := getIssueWorklogMapKey(w.IssueKey, w.StartedAt)
 
 	if _, exists := issuesWorklogsMap[k]; exists {
 		return nil
 	}
-	started := w.StartedAt.In(loc)
-	err := s.jira.UploadOne(w.IssueKey, started, int(w.TimeSpentSeconds))
-	return err
+
+	s := w.StartedAt.In(loc)
+	ts := int(w.TimeSpentSeconds)
+	if ts < 60 {
+		ts = 60
+	}
+	err := u.jira.UploadOne(w.IssueKey, s, ts)
+	return fmt.Errorf("cannot upload worklog %+v: %v", w, err)
 }
 
 func getIssueWorklogMapKey(issueKey string, time time.Time) string {
-	return fmt.Sprintf("%v-%s", strings.ToLower(issueKey), time.In(loc).Format("2006-01-02T15:04:05"))
+	return fmt.Sprintf("%v-%s", strings.ToLower(issueKey), time.In(loc).Format(timeFormat))
 }

@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"errors"
 	"time"
 
 	jira "github.com/andygrunwald/go-jira"
@@ -34,12 +35,15 @@ func initClient(host string, user string, pass string) (*jira.Client, error) {
 }
 
 func (c *Client) UploadOne(issueKey string, started time.Time, timeSpentSeconds int) error {
-	_, _, err := client.Issue.AddWorklogRecord(issueKey, &jira.WorklogRecord{
+	_, r, err := client.Issue.AddWorklogRecord(issueKey, &jira.WorklogRecord{
 		Started:          (*jira.Time)(&started),
 		TimeSpentSeconds: timeSpentSeconds,
 	})
+	if err != nil {
+		return errors.New("error: " + r.Status)
+	}
 
-	return err
+	return nil
 }
 
 func (c *Client) GetWorklogs(id string) ([]jira.WorklogRecord, error) {

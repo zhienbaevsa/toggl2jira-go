@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/gookit/event"
 	"github.com/joho/godotenv"
+	"github.com/schollz/progressbar/v3"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/controller"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/repository/toggl"
 )
@@ -85,12 +87,15 @@ func main() {
 	if err != nil {
 		panic(err) // TODO Proper error handling
 	}
+
+	bar := progressbar.Default(-1, "Uploading worklogs...")
+	event.Listen(controller.WorklogUploadedEvent, event.ListenerFunc(func(e event.Event) error {
+		bar.Add(1)
+		return nil
+	}), event.Normal)
+
 	err = wu.Start(fromDate, toDate)
 	if err != nil {
 		panic(err) // TODO Proper error handling
 	}
-
-	// Implement progress bar
-	// bar := progressbar.Default(int64(len(ww)))
-	// bar.Add(1)
 }
