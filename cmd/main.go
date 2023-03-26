@@ -8,7 +8,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/controller"
-	"github.com/zhienbaevsa/toggle2jira-go/internal/repository/jira"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/repository/toggl"
 )
 
@@ -24,6 +23,7 @@ type config struct {
 		user string
 		pass string
 	}
+	Timezone string
 }
 
 func loadEnvConfig() (config, error) {
@@ -40,25 +40,12 @@ func loadEnvConfig() (config, error) {
 	cfg.Jira.user = os.Getenv("JIRA_USER")
 	cfg.Jira.pass = os.Getenv("JIRA_PASS")
 
+	cfg.Timezone = os.Getenv("TIMEZONE")
+
 	return cfg, nil
 }
 
 func main() {
-	cfg, err := loadEnvConfig()
-	if err != nil {
-		panic(err)
-	}
-
-	tes := &toggl.TogglTimeEntryStorage{
-		ApiKey: cfg.Toggl.apiKey,
-	}
-	wlu := &jira.JiraWorklogUploader{
-		Host:     cfg.Jira.host,
-		User:     cfg.Jira.user,
-		Password: cfg.Jira.pass,
-	}
-	wls := controller.NewWorklogService(tes, wlu)
-
 	from := flag.String("from", "", "From date")
 	to := flag.String("to", "", "To date")
 
@@ -81,15 +68,29 @@ func main() {
 		toDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	}
 
-	err = wls.Start(fromDate, toDate)
+	cfg, err := loadEnvConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	ts := &toggl.TogglTimeEntryStorage{
+		ApiKey: cfg.Toggl.apiKey,
+	}
+
+	wu, err := controller.New(ts, cfg.Timezone, controller.JiraConfig{
+		Host: cfg.Jira.host,
+		User: cfg.Jira.user,
+		Pass: cfg.Jira.pass,
+	})
+	if err != nil {
+		panic(err) // TODO Proper error handling
+	}
+	err = wu.Start(fromDate, toDate)
 	if err != nil {
 		panic(err) // TODO Proper error handling
 	}
 
-	// worklogs := 10
-	// bar := progressbar.Default(int64(worklogs))
-
-	// for i := 0; i < worklogs; i++ {
-	// 	bar.Add(1)
-	// }
+	// Implement progress bar
+	// bar := progressbar.Default(int64(len(ww)))
+	// bar.Add(1)
 }
