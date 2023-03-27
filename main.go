@@ -28,6 +28,28 @@ type config struct {
 	Timezone string
 }
 
+func main() {
+	fromDate, toDate := mustGetFromAndToDatesFromArgs()
+
+	cfg, err := loadEnvConfig()
+	if err != nil {
+		panic(fmt.Sprintf("error while loading config: %v", err))
+	}
+
+	wu := mustGetWorklogUploader(cfg)
+
+	bar := progressbar.Default(-1, "Uploading worklogs...")
+	event.Listen(controller.WorklogUploadedEvent, event.ListenerFunc(func(e event.Event) error {
+		bar.Add(1)
+		return nil
+	}), event.Normal)
+
+	err = wu.Start(fromDate, toDate)
+	if err != nil {
+		panic(fmt.Sprintf("error while loading worklogs: %v", err))
+	}
+}
+
 func loadEnvConfig() (config, error) {
 	var cfg config
 	err := godotenv.Load()
@@ -47,7 +69,7 @@ func loadEnvConfig() (config, error) {
 	return cfg, nil
 }
 
-func main() {
+func mustGetFromAndToDatesFromArgs() (time.Time, time.Time) {
 	from := flag.String("from", "", "From date")
 	to := flag.String("to", "", "To date")
 
@@ -55,47 +77,36 @@ func main() {
 
 	fromDate, err := time.Parse(timeFormat, *from)
 	if err != nil {
-		panic(fmt.Sprintf("Could not parse from time: %v", *from))
+		panic(fmt.Sprintf("Could not parse from date: %v", *from))
 	}
 
 	var toDate time.Time
 	if *to != "" {
 		toDateParsed, err := time.Parse(timeFormat, *to)
 		if err != nil {
-			panic(fmt.Sprintf("Could not parse to time: %v", *to))
+			panic(fmt.Sprintf("could not parse to date: %v", *to))
 		}
 		toDate = toDateParsed
 	} else {
+		// If to date is not specified, set it to the beginning of the current day
 		now := time.Now()
 		toDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	}
 
-	cfg, err := loadEnvConfig()
-	if err != nil {
-		panic(err)
-	}
+	return fromDate, toDate
+}
 
+func mustGetWorklogUploader(cfg config) controller.WorklogUploader {
 	ts := &toggl.TogglTimeEntryStorage{
 		ApiKey: cfg.Toggl.apiKey,
 	}
-
 	wu, err := controller.New(ts, cfg.Timezone, controller.JiraConfig{
 		Host: cfg.Jira.host,
 		User: cfg.Jira.user,
 		Pass: cfg.Jira.pass,
 	})
 	if err != nil {
-		panic(err) // TODO Proper error handling
+		panic(fmt.Sprintf("error while creating WorklogUploader: %v", err))
 	}
-
-	bar := progressbar.Default(-1, "Uploading worklogs...")
-	event.Listen(controller.WorklogUploadedEvent, event.ListenerFunc(func(e event.Event) error {
-		bar.Add(1)
-		return nil
-	}), event.Normal)
-
-	err = wu.Start(fromDate, toDate)
-	if err != nil {
-		panic(err) // TODO Proper error handling
-	}
+	return *wu
 }
