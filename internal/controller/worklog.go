@@ -103,7 +103,11 @@ func (u *WorklogUploader) UploadOne(w model.Worklog) error {
 		ts = 60
 	}
 	err := u.jira.UploadOne(w.IssueKey, s, ts)
-	return fmt.Errorf("cannot upload worklog %+v: %v", w, err)
+	if err != nil {
+		return fmt.Errorf("cannot upload worklog %+v: %v", w, err)
+	}
+
+	return nil
 }
 
 func getIssueWorklogMapKey(issueKey string, time time.Time) string {

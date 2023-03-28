@@ -3,35 +3,33 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
+	"io/ioutil"
 	"time"
 
 	"github.com/gookit/event"
-	"github.com/joho/godotenv"
 	"github.com/schollz/progressbar/v3"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/controller"
 	"github.com/zhienbaevsa/toggle2jira-go/internal/repository/toggl"
+	"gopkg.in/yaml.v3"
 )
 
 const timeFormat string = "2006-01-02"
+const configFile string = "config.yaml"
 
 type config struct {
-	Toggl struct {
-		host   string
-		apiKey string
-	}
-	Jira struct {
-		host string
-		user string
-		pass string
-	}
-	Timezone string
+	ToggleApiKey       string            `yaml:"toggle_api_key"`
+	JiraHost           string            `yaml:"jira_host"`
+	JiraUser           string            `yaml:"jira_user"`
+	JiraPass           string            `yaml:"jira_pass"`
+	Timezone           string            `yaml:"timezone"`
+	AliasToIssueKeyMap map[string]string `yaml:"alias_to_issue_key_map"`
 }
 
 func main() {
 	fromDate, toDate := mustGetFromAndToDatesFromArgs()
 
-	cfg, err := loadEnvConfig()
+	cfg, err := loadConfig()
+
 	if err != nil {
 		panic(fmt.Sprintf("error while loading config: %v", err))
 	}
@@ -50,21 +48,17 @@ func main() {
 	}
 }
 
-func loadEnvConfig() (config, error) {
+func loadConfig() (config, error) {
 	var cfg config
-	err := godotenv.Load()
+	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return cfg, err
 	}
 
-	cfg.Toggl.host = os.Getenv("TOGGL_HOST")
-	cfg.Toggl.apiKey = os.Getenv("TOGGL_API_KEY")
-
-	cfg.Jira.host = os.Getenv("JIRA_HOST")
-	cfg.Jira.user = os.Getenv("JIRA_USER")
-	cfg.Jira.pass = os.Getenv("JIRA_PASS")
-
-	cfg.Timezone = os.Getenv("TIMEZONE")
+	err = yaml.Unmarshal(data, &cfg)
+	if err != nil {
+		return cfg, err
+	}
 
 	return cfg, nil
 }
@@ -98,12 +92,13 @@ func mustGetFromAndToDatesFromArgs() (time.Time, time.Time) {
 
 func mustGetWorklogUploader(cfg config) controller.WorklogUploader {
 	ts := &toggl.TogglTimeEntryStorage{
-		ApiKey: cfg.Toggl.apiKey,
+		ApiKey:             cfg.ToggleApiKey,
+		AliasToIssueKeyMap: cfg.AliasToIssueKeyMap,
 	}
 	wu, err := controller.New(ts, cfg.Timezone, controller.JiraConfig{
-		Host: cfg.Jira.host,
-		User: cfg.Jira.user,
-		Pass: cfg.Jira.pass,
+		Host: cfg.JiraHost,
+		User: cfg.JiraUser,
+		Pass: cfg.JiraPass,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("error while creating WorklogUploader: %v", err))

@@ -1,0 +1,9 @@
+toggle_api_key: ""
+
+jira_host: ""
+jira_user: ""
+jira_pass: ""
+
+timezone: ""
+
+issue_key_map:

@@ -9,18 +9,13 @@ import (
 	"github.com/zhienbaevsa/toggle2jira-go/pkg/model"
 )
 
-var issueKeyMap map[string]string = map[string]string{
-	"misc":     "COM-1536",
-	"meet":     "COM-1522",
-	"personal": "personal",
-}
-
 type TogglTimeEntryStorage struct {
-	ApiKey string
+	ApiKey             string
+	AliasToIssueKeyMap map[string]string
 }
 
-func (t *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error) {
-	s := toggl.OpenSession(t.ApiKey)
+func (ts *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error) {
+	s := toggl.OpenSession(ts.ApiKey)
 	te, err := s.GetTimeEntries(from, to)
 
 	if err != nil {
@@ -29,7 +24,7 @@ func (t *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error)
 	var res []model.Worklog
 
 	for _, v := range te {
-		issueKey, err := getIssueKey(v)
+		issueKey, err := ts.getIssueKey(v)
 		if err != nil {
 			return []model.Worklog{}, err
 		}
@@ -45,7 +40,7 @@ func (t *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error)
 	return res, nil
 }
 
-func getIssueKey(t toggl.TimeEntry) (string, error) {
+func (ts *TogglTimeEntryStorage) getIssueKey(t toggl.TimeEntry) (string, error) {
 	r := regexp.MustCompile("^([^:]+)")
 	toggleTimeEntryKey := r.FindString(t.Description)
 
@@ -53,7 +48,7 @@ func getIssueKey(t toggl.TimeEntry) (string, error) {
 		return "", fmt.Errorf("cannot define issue key from time entry description: %v, %s", t.Description, t.Start)
 	}
 
-	k := issueKeyMap[toggleTimeEntryKey]
+	k := ts.AliasToIssueKeyMap[toggleTimeEntryKey]
 	if k == "" {
 		return toggleTimeEntryKey, nil
 	}
