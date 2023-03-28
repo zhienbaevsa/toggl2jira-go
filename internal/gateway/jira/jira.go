@@ -46,7 +46,7 @@ func (c *Client) UploadOne(issueKey string, started time.Time, timeSpentSeconds 
 	return nil
 }
 
-func (c *Client) GetWorklogs(id string) ([]jira.WorklogRecord, error) {
+func (c *Client) Worklogs(id string) ([]jira.WorklogRecord, error) {
 	w, _, err := client.Issue.GetWorklogs(id)
 	if err != nil {
 		return []jira.WorklogRecord{}, err

@@ -24,14 +24,14 @@ func (ts *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error
 	var res []model.Worklog
 
 	for _, v := range te {
-		issueKey, err := ts.getIssueKey(v)
+		issueKey, err := ts.issueKey(v)
 		if err != nil {
 			return []model.Worklog{}, err
 		}
 
 		res = append(res, model.Worklog{
 			IssueKey:         issueKey,
-			Comment:          getComment(v.Description),
+			Comment:          comment(v.Description),
 			StartedAt:        *v.Start,
 			TimeSpentSeconds: v.Duration,
 		})
@@ -40,7 +40,7 @@ func (ts *TogglTimeEntryStorage) Get(from, to time.Time) ([]model.Worklog, error
 	return res, nil
 }
 
-func (ts *TogglTimeEntryStorage) getIssueKey(t toggl.TimeEntry) (string, error) {
+func (ts *TogglTimeEntryStorage) issueKey(t toggl.TimeEntry) (string, error) {
 	r := regexp.MustCompile("^([^:]+)")
 	toggleTimeEntryKey := r.FindString(t.Description)
 
@@ -56,7 +56,7 @@ func (ts *TogglTimeEntryStorage) getIssueKey(t toggl.TimeEntry) (string, error) 
 	return k, nil
 }
 
-func getComment(description string) string {
+func comment(description string) string {
 	r := regexp.MustCompile(":[[:space:]]*(.*)")
 	return r.FindStringSubmatch(description)[1]
 

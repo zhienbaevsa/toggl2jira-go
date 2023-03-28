@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/gookit/event"
@@ -26,7 +26,7 @@ type config struct {
 }
 
 func main() {
-	fromDate, toDate := mustGetFromAndToDatesFromArgs()
+	fromDate, toDate := mustFromAndToDatesFromArgs()
 
 	cfg, err := loadConfig()
 
@@ -34,7 +34,7 @@ func main() {
 		panic(fmt.Sprintf("error while loading config: %v", err))
 	}
 
-	wu := mustGetWorklogUploader(cfg)
+	wu := mustWorklogUploader(cfg)
 
 	bar := progressbar.Default(-1, "Uploading worklogs...")
 	event.Listen(controller.WorklogUploadedEvent, event.ListenerFunc(func(e event.Event) error {
@@ -50,7 +50,7 @@ func main() {
 
 func loadConfig() (config, error) {
 	var cfg config
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return cfg, err
 	}
@@ -63,7 +63,7 @@ func loadConfig() (config, error) {
 	return cfg, nil
 }
 
-func mustGetFromAndToDatesFromArgs() (time.Time, time.Time) {
+func mustFromAndToDatesFromArgs() (time.Time, time.Time) {
 	from := flag.String("from", "", "From date")
 	to := flag.String("to", "", "To date")
 
@@ -90,7 +90,7 @@ func mustGetFromAndToDatesFromArgs() (time.Time, time.Time) {
 	return fromDate, toDate
 }
 
-func mustGetWorklogUploader(cfg config) controller.WorklogUploader {
+func mustWorklogUploader(cfg config) controller.WorklogUploader {
 	ts := &toggl.TogglTimeEntryStorage{
 		ApiKey:             cfg.ToggleApiKey,
 		AliasToIssueKeyMap: cfg.AliasToIssueKeyMap,

@@ -76,13 +76,13 @@ func (u *WorklogUploader) Start(from, to time.Time) error {
 func (u *WorklogUploader) loadIssuesWorklogsMap(ids []string) error {
 	res := make(map[string]bool)
 	for _, v := range ids {
-		ww, err := u.jira.GetWorklogs(v)
+		ww, err := u.jira.Worklogs(v)
 		if err != nil {
 			return err
 		}
 
 		for _, w := range ww {
-			k := getIssueWorklogMapKey(v, time.Time(*w.Started))
+			k := issueWorklogMapKey(v, time.Time(*w.Started))
 			res[k] = true
 		}
 	}
@@ -91,7 +91,7 @@ func (u *WorklogUploader) loadIssuesWorklogsMap(ids []string) error {
 }
 
 func (u *WorklogUploader) UploadOne(w model.Worklog) error {
-	k := getIssueWorklogMapKey(w.IssueKey, w.StartedAt)
+	k := issueWorklogMapKey(w.IssueKey, w.StartedAt)
 
 	if _, exists := issuesWorklogsMap[k]; exists {
 		return nil
@@ -110,6 +110,6 @@ func (u *WorklogUploader) UploadOne(w model.Worklog) error {
 	return nil
 }
 
-func getIssueWorklogMapKey(issueKey string, time time.Time) string {
+func issueWorklogMapKey(issueKey string, time time.Time) string {
 	return fmt.Sprintf("%v-%s", strings.ToLower(issueKey), time.In(loc).Format(timeFormat))
 }
