@@ -6,4 +6,4 @@ jira_pass: ""
 
 timezone: ""
 
-issue_key_map:
+alias_to_issue_key_map:
